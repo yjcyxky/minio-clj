@@ -39,12 +39,12 @@
   "Uploads a file object to the bucket. 
    Returns a map of bucket name and file name
   "
-  ([conn ^String bucket   ^String file-name]
+  ([conn ^String bucket ^String file-name]
    (let [upload-name (str  (NOW) "_" (UUID) "_" file-name)]
-     (put-object conn bucket upload-name  file-name)
+     (put-object conn bucket upload-name file-name)
      {:bucket bucket
       :name upload-name}))
-  ([conn ^String bucket  ^String upload-name  ^String source-file-name]
+  ([conn ^String bucket ^String upload-name ^String source-file-name]
    (. conn putObject bucket upload-name source-file-name)
    {:bucket bucket
     :name upload-name}))
