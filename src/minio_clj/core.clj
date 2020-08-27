@@ -56,9 +56,14 @@
    Use clojure.java.io/copy to stream the bucket data files, or HTTP responses
   "
   ([conn {:keys [bucket name]}]
-   (io/reader (.getObject conn bucket name)))
+   (.getObject conn bucket name))
   ([conn bucket name]
-   (io/reader (.getObject conn bucket name))))
+   (.getObject conn bucket name)))
+
+(defn download-object
+  "Download object to a local path."
+  [conn bucket name localpath]
+  (io/copy (get-object conn bucket name) (io/file localpath)))
 
 (defn- objectStat->map
   "helper function for datatype conversion"
