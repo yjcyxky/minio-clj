@@ -3,12 +3,11 @@
     :description "Clojure Wrapper around Minio-java client"}
   (:require [java-time :as t]
             [clojure.walk :refer [keywordize-keys]]
-            [clojure.data.json :as json])
-  (:import [io.minio MinioClient ObjectStat]
-           [io.minio.policy PolicyType]
+            [clojure.data.json :as json]
+            [clojure.java.io :as io])
+  (:import [io.minio MinioClient]
            [io.minio.messages Item]
-           [io.minio.errors MinioException ErrorResponseException]
-           [java.io ByteArrayInputStream]))
+           [io.minio.errors ErrorResponseException]))
 
 (defn connect
   [^String url ^String access-key ^String secret-key]
@@ -27,7 +26,9 @@
 (defn list-buckets
   "returns maps "
   [conn]
-  (. conn listBuckets))
+  (->> (. conn listBuckets)
+       (map (fn [bucket] {"CreationDate" (str (.creationDate bucket))
+                          "Name" (.name bucket)}))))
 
 (defn UUID []
   (java.util.UUID/randomUUID))
@@ -45,7 +46,7 @@
      {:bucket bucket
       :name upload-name}))
   ([conn ^String bucket ^String upload-name ^String source-file-name]
-   (. conn putObject bucket upload-name source-file-name)
+   (. conn putObject bucket upload-name source-file-name nil)
    {:bucket bucket
     :name upload-name}))
 
@@ -55,21 +56,20 @@
    Use clojure.java.io/copy to stream the bucket data files, or HTTP responses
   "
   ([conn {:keys [bucket name]}]
-   (clojure.java.io/reader (.getObject conn bucket name)))
+   (io/reader (.getObject conn bucket name)))
   ([conn bucket name]
-   (clojure.java.io/reader (.getObject conn bucket name))))
+   (io/reader (.getObject conn bucket name))))
 
 (defn- objectStat->map
   "helper function for datatype conversion"
   [stat]
   {:bucket (.bucketName stat)
    :name (.name stat)
-   :createdTime (.createdTime stat)
+   :created-time (.createdTime stat)
    :length (.length stat)
-   :ETag (.etag stat)
+   :etag (.etag stat)
    :content-type (.contentType stat)
-   :encryption-key (.contentKey stat)
-   :matDesc (.matDesc stat)
+   :encryption-key nil
    :http-headers (into {} (.httpHeaders stat))})
 
 (defn get-object-meta
@@ -83,16 +83,29 @@
        objectStat->map
        (assoc :key name))))
 
+(defn- objectItem->map
+  "Helper function for datatye conversion."
+  [item]
+  {:etag (.etag item)
+   :last-modified (.lastModified item)
+   :key (.objectName item)
+   :owner (.owner item)
+   :size (.size item)
+   :storage-class (.storageClass item)
+   :user-metadata (.userMetadata item)
+   :version-id (.versionId item)})
+
 (defn- item->map [^Item item]
   (->> (.get item)
-       (into {})
-       (keywordize-keys)))
+       (objectItem->map)))
 
 (defn list-objects
   ([conn bucket]
-   (map item->map (.listObjects conn bucket "" true false)))
+   (list-objects conn bucket "" true))
   ([conn bucket filter]
-   (map item->map (.listObjects conn bucket filter true false))))
+   (list-objects conn bucket filter true))
+  ([conn bucket filter recursive]
+   (map item->map (.listObjects conn bucket filter recursive false))))
 
 (defn remove-bucket!
   "removes the bucket form the storage"
@@ -124,4 +137,4 @@
    bucket policy examples: https://docs.aws.amazon.com/AmazonS3/latest/dev/example-bucket-policies.html
   "
   [conn ^clojure.lang.IPersistentMap policy]
-  (.setBucketPolicy conn  ((json/write-str policy))))
+  (.setBucketPolicy conn ((json/write-str policy))))
