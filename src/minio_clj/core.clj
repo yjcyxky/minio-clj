@@ -88,11 +88,14 @@
        objectStat->map
        (assoc :key name))))
 
+(defmacro swallow-exceptions [& body]
+  `(try ~@body (catch Exception e#)))
+
 (defn- objectItem->map
   "Helper function for datatye conversion."
   [item]
   {:etag (.etag item)
-   :last-modified (.lastModified item)
+   :last-modified (swallow-exceptions (.lastModified item))
    :key (.objectName item)
    :owner (.owner item)
    :size (.size item)
