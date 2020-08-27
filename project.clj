@@ -1,4 +1,4 @@
-(defproject minio-clj "0.2.1"
+(defproject minio-clj "0.2.2"
   :description "Clojure Wrapper around Minio-java client"
   :url "https://github.com/clinico-omics/minio-clj"
   :license {:name "Eclipse Public License"
